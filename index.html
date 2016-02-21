@@ -54,7 +54,7 @@ Cell.prototype.kill = function() {
     });
 }
 
-function Game(side) {
+function Game(side, canvasWidth, canvasHeight) {
     this.side = side;
     this.map = [];
     for (var i = 0; i < side; i++) {
@@ -78,6 +78,11 @@ function Game(side) {
             this.get(x, y).neighbors = neighbors;
         }
     }
+
+    var canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    this.buffer = canvas.getContext('2d');
 }
 
 Game.prototype.get = function(x, y, defaultValue) {
@@ -111,9 +116,35 @@ Game.prototype.playAt = function(player, x, y) {
     }
 };
 
-var game = new Game(19);
+Game.prototype.render = function(width, height) {
+    this.buffer.clearRect(0, 0, canvas.width, canvas.height);
+    this.buffer.save();
+
+    this.buffer.translate(canvas.width/2, canvas.height/2-tileHeight/2);
+    this.buffer.scale(scale, scale);
+
+    for (var y = 0; y < game.side; y++) {
+        for (var x = game.side - 1; x >= 0; x--) {
+            var owner = game.map[y][x].owner;
+            var ground = tiles[0];
+            //buffer.fillRect(x*tile.width, y*tile.height, 10, 10);
+            var screenX = (y+x-game.side)*tileWidth/2;
+            var screenY = (y-x)*tileHeight/2;
+            this.buffer.drawImage(ground, screenX, screenY);
+
+            if (owner > 0) {
+                var tile = tiles[owner];
+                this.buffer.drawImage(tile, screenX + ground.width/2 - tile.width/2, screenY - tileHeight / 2);
+            }
+        }
+    }
+
+    this.buffer.restore();
+}
+
 var canvas = document.getElementsByTagName('canvas')[0];
 var context = canvas.getContext('2d');
+var game = new Game(19, canvas.width, canvas.height);
 var scale = 0.7;
 
 var tiles = {};
@@ -121,29 +152,9 @@ var tileWidth = 130;
 var tileHeight = 66;
 
 function render() {
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.save();
-
-    context.translate(canvas.width/2, canvas.height/2-tileHeight/2);
-    context.scale(scale, scale);
-
-    for (var y = 0; y < game.side; y++) {
-        for (var x = game.side - 1; x >= 0; x--) {
-            var owner = game.map[y][x].owner;
-            var ground = tiles[0];
-            //context.fillRect(x*tile.width, y*tile.height, 10, 10);
-            var screenX = (y+x-game.side)*tileWidth/2;
-            var screenY = (y-x)*tileHeight/2;
-            context.drawImage(ground, screenX, screenY);
-
-            if (owner > 0) {
-                var tile = tiles[owner];
-                context.drawImage(tile, screenX + ground.width/2 - tile.width/2, screenY - tileHeight / 2);
-            }
-        }
-    }
-
-    context.restore();
+    game.render(canvas.width, canvas.height);
+    var image = game.buffer.getImageData(0, 0, canvas.width, canvas.height);
+    context.putImageData(image, 0, 0);
 }
 
 var player = 1;
