@@ -3,6 +3,18 @@
 <head>
     <meta http-equiv='content-type' content='text/html;charset=utf-8'/>
     <title>Sprawl</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
 </head>
 
 <body>
@@ -90,10 +102,10 @@ function Board(side, canvasWidth, canvasHeight) {
         }
     }
 
-    var canvas = document.createElement('canvas');
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
-    this.buffer = canvas.getContext('2d');
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = canvasWidth;
+    this.canvas.height = canvasHeight;
+    this.buffer = this.canvas.getContext('2d');
 }
 
 Board.prototype.get = function(x, y, defaultValue) {
@@ -129,17 +141,19 @@ Board.prototype.playAt = function(player, x, y) {
 
 Board.prototype.render = function(width, height, scale, tiles) {
     this.buffer.save();
-    this.buffer.fillStyle = '#FFF';
-    this.buffer.fillRect(0, 0, canvas.width, canvas.height);
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.buffer.fillStyle = '#EEE';
+    this.buffer.fillRect(0, 0, width, height);
 
-    this.buffer.translate(canvas.width/2, canvas.height/2-tileHeight/2);
+    this.buffer.translate(width/2, height/2-tileHeight/2);
     this.buffer.scale(scale, scale);
 
     for (var y = 0; y < this.side; y++) {
         for (var x = this.side - 1; x >= 0; x--) {
             var owner = this.map[y][x].owner;
             var ground = tiles[0];
-            //buffer.fillRect(x*tile.width, y*tile.height, 10, 10);
+
             var screenX = (y+x-this.side)*tileWidth/2;
             var screenY = (y-x)*tileHeight/2;
             this.buffer.drawImage(ground, screenX, screenY);
@@ -155,14 +169,19 @@ Board.prototype.render = function(width, height, scale, tiles) {
 }
 
 function Game(side, context, width, height) {
-    this.scale = Math.min(width / (side * tileWidth), height / ((side+1) * tileHeight)) * 0.9;
     this.width = width;
     this.height = height;
     this.context = context;
     this.board = new Board(side, this.width, this.height);
     this.player = 1;
+    this.updateScale();
     this.loadTiles(this.update.bind(this));
     this.dragging = 0;
+}
+
+Game.prototype.updateScale = function() {
+    var side = this.board.side;
+    this.scale = Math.min(this.width / (side * tileWidth), this.height / ((side+1) * tileHeight)) * 0.9;
 }
 
 Game.prototype.loadTiles = function(callback) {
@@ -191,14 +210,16 @@ Game.prototype.update = function() {
 }
 
 Game.prototype.render = function() {
+    this.context.clearRect(0, 0, this.width, this.height);
+
     var image = this.board.buffer.getImageData(0, 0, this.width, this.height);
     this.context.putImageData(image, 0, 0);
 
     if (this.dragging != 1) {
-        this.context.drawImage(this.tiles[1], 100, this.height-200);
+        this.context.drawImage(this.tiles[1], 200-this.tiles[1].width/2, this.height-200);
     }
     if (this.dragging != 2) {
-        this.context.drawImage(this.tiles[2], this.width-100, this.height-200);
+        this.context.drawImage(this.tiles[2], this.width-200-this.tiles[2].width/2, this.height-200);
     }
 }
 
@@ -214,7 +235,7 @@ Game.prototype.playEvent = function(e) {
     }
 }
 
-Game.prototype.hookEvents = function(canvas) {
+Game.prototype.hookEvents = function(canvas, autoresize) {
     //canvas.onclick = game.playEvent.bind(game);
 
     canvas.onmousedown = (function(e) {
@@ -229,7 +250,8 @@ Game.prototype.hookEvents = function(canvas) {
             var tile = this.tiles[this.dragging]
             this.context.drawImage(tile, pos.x/this.scale-tile.height/2, pos.y/this.scale-tile.width/1.7);
             this.context.restore();
-        }).bind(this);;
+        }).bind(this);
+        canvas.onmousemove(e);
     }).bind(this);
 
     canvas.onmouseup = (function(e) {
@@ -238,12 +260,24 @@ Game.prototype.hookEvents = function(canvas) {
         canvas.onmousemove = undefined;
         game.playEvent(e);
         this.update();
-    }).bind(this)
+    }).bind(this);
+
+    if (autoresize) {
+        window.onresize = (function() {
+            this.width = window.innerWidth;
+            this.height = window.innerHeight;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            this.updateScale();
+            this.update();
+        }).bind(this);
+        window.onresize();
+    }
 }
 
 var canvas = document.getElementsByTagName('canvas')[0];
 var game = new Game(19, canvas.getContext('2d'), canvas.width, canvas.height);
-game.hookEvents(canvas);
+game.hookEvents(canvas, true);
 
 </script>
 </body>
