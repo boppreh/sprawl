@@ -182,7 +182,15 @@ Board.prototype.render = function(width, height, scale, tiles) {
                 }
                 this.buffer.drawImage(tile, screenX, screenY-tile.height);
             } else {
-                this.buffer.drawImage(tiles.ground, screenX, screenY-tiles.ground.height);
+                var neighbors = '';
+                var c = new Cell(cell.owner);
+                if (this.get(x, y-1, c).owner === cell.owner) neighbors += 'n';
+                if (this.get(x+1, y, c).owner === cell.owner) neighbors += 'e';
+                if (this.get(x-1, y, c).owner === cell.owner) neighbors += 'w';
+                if (this.get(x, y+1, c).owner === cell.owner) neighbors += 's';
+
+                var groundTile = neighbors.length <= 1 ? tiles.ground : tiles[neighbors];
+                this.buffer.drawImage(groundTile, screenX, screenY-tiles.ground.height);
                 var tile = tiles['owner_' + cell.owner];
                 this.buffer.drawImage(tile, screenX + tiles.ground.width/2 - tile.width/2, screenY-tile.height*1.5);
             }
@@ -209,7 +217,8 @@ Game.prototype.updateScale = function() {
 }
 
 Game.prototype.loadTiles = function(callback) {
-    var tileTypes = ['ground', 'owner_1', 'owner_2', 'trees_1', 'trees_2', 'trees_3', 'trees_4', 'trees_5', 'trees_6', 'trees_7', 'trees_8', 'trees_9'];
+    var tileTypes = ['ground', 'owner_1', 'owner_2', 'trees_1', 'trees_2', 'trees_3', 'trees_4', 'trees_5', 'trees_6', 'trees_7', 'trees_8', 'trees_9', 'ews', 'nws', 'nes', 'new', 'ew', 'ws', 'ns', 'es', 'nw', 'ne'];
+
     this.tiles = {};
 
     var remaining = tileTypes.length;
