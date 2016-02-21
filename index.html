@@ -1,30 +1,153 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
+    <meta http-equiv='content-type' content='text/html;charset=utf-8'/>
     <title>Sprawl</title>
 </head>
-<body style="width: 100%;">
-<canvas width="800" height="800" style="background-color: #CCC;"></canvas>
+
+<body>
+<canvas width="800" height="800" style="background-color: #CCC;" ></canvas>
 
 <script>
 "use strict";
-var canvas = document.getElementsByTagName('canvas')[0];
-var context = canvas.getContext('2d');
-context.fillStyle = '#FFF';
-context.fillRect(100, 100, 200, 200);
+function Cell(owner) {
+    this.owner = owner;
+    this.neighbors = [];
+}
+
+Cell.prototype.flood = function(callback, visited) {
+    if (!callback(this)) {
+        return;
+    }
+
+    if (visited === undefined) {
+        visited = [];
+    }
+    visited.push(this);
+    for (var i = 0; i < this.neighbors.length; i++) {
+        var cell = this.neighbors[i];
+        if (visited.indexOf(cell) === -1) {
+            cell.flood(callback, visited);
+        }
+    }
+}
+
+Cell.prototype.liberties = function() {
+    var count = 0;
+    this.flood(function(c) {
+        if (c.owner === 0) {
+            count += 1
+        }
+        return c.owner === this.owner;
+    });
+    return count;
+}
+
+Cell.prototype.kill = function() {
+    var owner = this.owner;
+    this.flood(function(c) {
+        if (c.owner === owner) {
+            c.owner = 0;
+            return true;
+        }
+    });
+}
 
 function Game(side) {
+    this.side = side;
     this.map = [];
     for (var i = 0; i < side; i++) {
         var line = [];
         this.map.push(line);
         for (var j = 0; j < side; j++) {
-            line.push(0);
+            line.push(new Cell(0));
+        }
+    }
+
+    for (var y = 0; y < side; y++) {
+        for (var x = 0; x < side; x++) {
+            var neighbors = [
+                this.get(x, y+1),
+                this.get(x, y-1),
+                this.get(x+1, y),
+                this.get(x-1, y),
+            ].filter(function(e) {
+                return e !== undefined;
+            });
+            this.get(x, y).neighbors = neighbors;
         }
     }
 }
 
+Game.prototype.get = function(x, y, defaultValue) {
+    if (x >= 0 && x < this.side && y >= 0 && y < this.side) {
+        return this.map[y][x];
+    } else {
+        return defaultValue;
+    }
+};
+
+Game.prototype.playAt = function(player, x, y) {
+    var cell = this.get(x, y, new Cell(-1));
+    if (cell.owner !== 0) {
+        return false;
+    }
+
+    cell.owner = player;
+
+    var self = this;
+    cell.neighbors.forEach(function(c) {
+        if (c.liberties() === 0) {
+            c.kill();
+        }
+    });
+
+    if (cell.liberties() > 0) {
+        return true;
+    } else {
+        cell.owner = 0;
+        return false;
+    }
+};
+
 var game = new Game(19);
+
+var tiles = {};
+var tileWidth = 130;
+var tileHeight = 66;
+
+function render() {
+    var canvas = document.getElementsByTagName('canvas')[0];
+    var context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.translate(canvas.width/2, canvas.height/2);
+    context.scale(0.3, 0.3);
+
+    for (var y = 0; y < game.side; y++) {
+        for (var x = game.side - 1; x >= 0; x--) {
+            var owner = game.map[y][x].owner;
+            var tile = tiles[owner];
+            //context.fillRect(x*tile.width, y*tile.height, 10, 10);
+            context.drawImage(tile, (x+y)*tileWidth/2 - (game.side) * tileWidth/2, (y-x)*tileHeight/2);
+        }
+    }
+}
+
+var remaining = 3
+for (var i = 0; i < remaining; i++) {
+    var tile = new Image();
+    tile.onload = function() {
+        remaining--;
+        if (remaining === 0) {
+            render();
+        }
+    };
+    tile.onerror = function(e) {
+        console.log(e);
+    }
+    tile.src = 'owner_' + i + '.png';
+    tiles[i] = tile;
+}
 </script>
 </body>
 </html>
