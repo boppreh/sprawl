@@ -34,11 +34,12 @@ Cell.prototype.flood = function(callback, visited) {
 
 Cell.prototype.liberties = function() {
     var count = 0;
+    var owner = this.owner;
     this.flood(function(c) {
         if (c.owner === 0) {
             count += 1
         }
-        return c.owner === this.owner;
+        return c.owner === owner;
     });
     return count;
 }
@@ -111,25 +112,61 @@ Game.prototype.playAt = function(player, x, y) {
 };
 
 var game = new Game(19);
+var canvas = document.getElementsByTagName('canvas')[0];
+var context = canvas.getContext('2d');
+var scale = 0.3;
 
 var tiles = {};
 var tileWidth = 130;
 var tileHeight = 66;
 
+var positions = [];
+
 function render() {
-    var canvas = document.getElementsByTagName('canvas')[0];
-    var context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
+    context.save();
+
     context.translate(canvas.width/2, canvas.height/2);
-    context.scale(0.3, 0.3);
+    context.scale(scale, scale);
 
     for (var y = 0; y < game.side; y++) {
         for (var x = game.side - 1; x >= 0; x--) {
             var owner = game.map[y][x].owner;
-            var tile = tiles[owner];
+            var ground = tiles[0];
             //context.fillRect(x*tile.width, y*tile.height, 10, 10);
-            context.drawImage(tile, (x+y)*tileWidth/2 - (game.side) * tileWidth/2, (y-x)*tileHeight/2);
+            var screenX = (x+y)*tileWidth/2 - (game.side) * tileWidth/2 - ground.width/2;
+            var screenY = (y-x)*tileHeight/2 - ground.height/2;
+            positions.push({screen: [screenX+tileWidth/2, screenY+tileHeight/2], map: [x, y]})
+            context.drawImage(ground, screenX, screenY);
+
+            if (owner > 0) {
+                var tile = tiles[owner];
+                context.drawImage(tile, screenX + ground.width/2 - tile.width/2, screenY - tileHeight / 2);
+            }
         }
+    }
+
+    context.restore();
+}
+
+var player = 1;
+canvas.onclick = function(e) {
+    var x = (e.clientX - canvas.width / 2) / scale;
+    var y = (e.clientY - canvas.height / 2) / scale;
+    var minDistance = null;
+    var mapPosition = null;
+    for (var i = 0; i < positions.length; i++) {
+        var p = positions[i];
+        var distance = Math.abs(x - p.screen[0]) + Math.abs(y - p.screen[1]);
+        if (minDistance === null || distance < minDistance) {
+            minDistance = distance;
+            mapPosition = p.map;
+        }
+    }
+    var ok = game.playAt(player, mapPosition[0], mapPosition[1]);
+    if (ok) {
+        player = player === 1 ? 2 : 1;
+        render();
     }
 }
 
