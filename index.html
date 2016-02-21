@@ -11,8 +11,6 @@
 <script>
 "use strict";
 
-var scale = 0.7;
-
 var tileWidth = 130;
 var tileHeight = 66;
 
@@ -129,7 +127,7 @@ Board.prototype.playAt = function(player, x, y) {
     }
 };
 
-Board.prototype.render = function(width, height, tiles) {
+Board.prototype.render = function(width, height, scale, tiles) {
     this.buffer.save();
     this.buffer.fillStyle = '#FFF';
     this.buffer.fillRect(0, 0, canvas.width, canvas.height);
@@ -157,6 +155,7 @@ Board.prototype.render = function(width, height, tiles) {
 }
 
 function Game(side, context, width, height) {
+    this.scale = Math.min(width / (side * tileWidth), height / ((side+1) * tileHeight)) * 0.9;
     this.width = width;
     this.height = height;
     this.context = context;
@@ -187,7 +186,7 @@ Game.prototype.loadTiles = function(callback) {
 }
 
 Game.prototype.update = function() {
-    this.board.render(this.width, this.height, this.tiles);
+    this.board.render(this.width, this.height, this.scale, this.tiles);
     this.render();
 }
 
@@ -205,8 +204,8 @@ Game.prototype.render = function() {
 
 Game.prototype.playEvent = function(e) {
     var pos = getMousePosition(e);
-    var screenX = (pos.x - this.width/2) / scale / tileWidth;
-    var screenY = (pos.y - this.height/2) / scale / (tileHeight/2);
+    var screenX = (pos.x - this.width/2) / this.scale / tileWidth;
+    var screenY = (pos.y - this.height/2) / this.scale / (tileHeight/2);
     var mapX = Math.round(screenX - screenY/2 + this.board.side/2 - 0.5);
     var mapY = Math.round(screenX + screenY/2 + this.board.side/2);
     var ok = this.board.playAt(this.player, mapX, mapY);
@@ -226,9 +225,9 @@ Game.prototype.hookEvents = function(canvas) {
             var pos = getMousePosition(e);
             this.context.save();
             //this.context.translate(this.width/2, this.height/2-tileHeight/2)
-            this.context.scale(scale, scale);
+            this.context.scale(this.scale, this.scale);
             var tile = this.tiles[this.dragging]
-            this.context.drawImage(tile, pos.x/scale-tile.height/2, pos.y/scale-tile.width/1.7);
+            this.context.drawImage(tile, pos.x/this.scale-tile.height/2, pos.y/this.scale-tile.width/1.7);
             this.context.restore();
         }).bind(this);;
     }).bind(this);
