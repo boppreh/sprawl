@@ -155,7 +155,7 @@ Board.prototype.render = function(width, height, scale, tiles) {
             var cell = this.map[y][x];
 
             var screenX = (y+x-this.side)*tileWidth/2;
-            var screenY = (y-x)*tileHeight/2;
+            var screenY = (y-x+1)*tileHeight/2;
 
             if (cell.owner === 0) {
                 switch (cell.detail) {
@@ -263,7 +263,7 @@ Game.prototype.render = function() {
 Game.prototype.playEvent = function(e) {
     var pos = getMousePosition(e);
     var tempX = (pos.x - this.width/2) / this.scale / tileWidth - 0.5;
-    var tempY = (pos.y - this.height/2) / this.scale / tileHeight + 1;
+    var tempY = (pos.y - this.height/2) / this.scale / tileHeight + 0.5;
     var mapX = Math.round(tempX - tempY + this.board.side/2);
     var mapY = Math.round(tempX + tempY + this.board.side/2);
     var ok = this.board.playAt(this.player, mapX, mapY);
