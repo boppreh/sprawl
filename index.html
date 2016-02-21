@@ -1,0 +1,30 @@
+<<!DOCTYPE html>
+<html>
+<head>
+    <title>Sprawl</title>
+</head>
+<body style="width: 100%;">
+<canvas width="800" height="800" style="background-color: #CCC;"></canvas>
+
+<script>
+"use strict";
+var canvas = document.getElementsByTagName('canvas')[0];
+var context = canvas.getContext('2d');
+context.fillStyle = '#FFF';
+context.fillRect(100, 100, 200, 200);
+
+function Game(side) {
+    this.map = [];
+    for (var i = 0; i < side; i++) {
+        var line = [];
+        this.map.push(line);
+        for (var j = 0; j < side; j++) {
+            line.push(0);
+        }
+    }
+}
+
+var game = new Game(19);
+</script>
+</body>
+</html>
