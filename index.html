@@ -131,7 +131,7 @@ Board.prototype.playAt = function(player, x, y) {
     var killed = [];
     cell.neighbors.forEach(function(c) {
         if (c.liberties() === 0) {
-            c.kill(killed.push);
+            c.kill(killed.push.bind(killed));
         }
     });
 
