@@ -36,6 +36,7 @@ function getMousePosition(e) {
 function Cell(owner) {
     this.owner = owner;
     this.neighbors = [];
+    this.detail = (Math.random() * 10)|0;
 }
 
 Cell.prototype.flood = function(callback, visited) {
@@ -53,8 +54,6 @@ Cell.prototype.flood = function(callback, visited) {
             cell.flood(callback, visited);
         }
     }
-
-    this.detail = (Math.random() * 10)|0;
 }
 
 Cell.prototype.liberties = function() {
@@ -148,23 +147,44 @@ Board.prototype.render = function(width, height, scale, tiles) {
     this.buffer.fillStyle = '#EEE';
     this.buffer.fillRect(0, 0, width, height);
 
-    this.buffer.translate(width/2, height/2-tileHeight/2);
+    this.buffer.translate(width/2, height/2);
     this.buffer.scale(scale, scale);
 
     for (var y = 0; y < this.side; y++) {
         for (var x = this.side - 1; x >= 0; x--) {
-            var owner = this.map[y][x].owner;
-            var ground = tiles.ground;
+            var cell = this.map[y][x];
 
             var screenX = (y+x-this.side)*tileWidth/2;
             var screenY = (y-x)*tileHeight/2;
-            this.buffer.drawImage(ground, screenX, screenY);
 
-            if (owner > 0) {
-                var tile = tiles['owner_' + owner];
-                this.buffer.drawImage(tile, screenX + ground.width/2 - tile.width/2, screenY - tileHeight / 2);
+            if (cell.owner === 0) {
+                switch (cell.detail) {
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                    case 5:
+                        tile = tiles.ground;
+                        break
+                    case 6:
+                        tile = tiles.trees_5;
+                        break;
+                    case 7:
+                        tile = tiles.trees_6;
+                        break;
+                    case 8:
+                        tile = tiles.trees_8;
+                        break;
+                    case 9:
+                        tile = tiles.trees_9;
+                        break;
+                }
+                this.buffer.drawImage(tile, screenX, screenY-tile.height);
             } else {
-
+                this.buffer.drawImage(tiles.ground, screenX, screenY-tiles.ground.height);
+                var tile = tiles['owner_' + cell.owner];
+                this.buffer.drawImage(tile, screenX + tiles.ground.width/2 - tile.width/2, screenY-tile.height*1.5);
             }
         }
     }
@@ -189,7 +209,7 @@ Game.prototype.updateScale = function() {
 }
 
 Game.prototype.loadTiles = function(callback) {
-    var tileTypes = ['ground', 'owner_1', 'owner_2'];
+    var tileTypes = ['ground', 'owner_1', 'owner_2', 'trees_1', 'trees_2', 'trees_3', 'trees_4', 'trees_5', 'trees_6', 'trees_7', 'trees_8', 'trees_9'];
     this.tiles = {};
 
     var remaining = tileTypes.length;
@@ -233,10 +253,10 @@ Game.prototype.render = function() {
 
 Game.prototype.playEvent = function(e) {
     var pos = getMousePosition(e);
-    var screenX = (pos.x - this.width/2) / this.scale / tileWidth;
-    var screenY = (pos.y - this.height/2) / this.scale / (tileHeight/2);
-    var mapX = Math.round(screenX - screenY/2 + this.board.side/2 - 0.5);
-    var mapY = Math.round(screenX + screenY/2 + this.board.side/2);
+    var tempX = (pos.x - this.width/2) / this.scale / tileWidth - 0.5;
+    var tempY = (pos.y - this.height/2) / this.scale / tileHeight + 1;
+    var mapX = Math.round(tempX - tempY + this.board.side/2);
+    var mapY = Math.round(tempX + tempY + this.board.side/2);
     var ok = this.board.playAt(this.player, mapX, mapY);
     if (ok) {
         this.player = this.player === 1 ? 2 : 1;
