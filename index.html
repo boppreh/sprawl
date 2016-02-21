@@ -25,7 +25,7 @@
 "use strict";
 
 var tileWidth = 130;
-var tileHeight = 66;
+var tileHeight = 65;
 
 function getMousePosition(e) {
     var canvasBounds = e.target.getBoundingClientRect();
@@ -214,7 +214,7 @@ Board.prototype.render = function(width, height, scale, tiles) {
 
                 var groundTile = neighbors.length === 0 ? tiles.alone : tiles[neighbors];
                 this.buffer.drawImage(groundTile, screenX, screenY-tiles.ground_0.height);
-                this.buffer.drawImage(tile, screenX + tiles.ground_0.width/2 - tile.width/2, screenY-tile.height*1.5);
+                this.buffer.drawImage(tile, screenX + tiles.ground_0.width/2 - tile.width/2, screenY-tiles.ground_0.height*.44-tile.height);
             }
         }
     }
