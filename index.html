@@ -143,6 +143,13 @@ Board.prototype.playAt = function(player, x, y) {
     }
 };
 
+Board.prototype.screenPosition = function(x, y, width, height, scale) {
+    return {
+        x: (width/2 + (y+x-this.side)*tileWidth/2) * scale,
+        y: (height/2 + (y-x+1)*tileHeight/2) * scale
+    };
+}
+
 Board.prototype.render = function(width, height, scale, tiles) {
     this.buffer.save();
     this.canvas.width = width;
@@ -342,6 +349,15 @@ Game.prototype.render = function() {
             this.particles.splice(i, 1);
         }
     }
+
+    if (this.dragging) {
+        this.context.save();
+        //this.context.translate(this.width/2, this.height/2-tileHeight/2)
+        this.context.scale(this.scale, this.scale);
+        var tile = this.tiles['owner_' + this.dragging + '_0']
+        this.context.drawImage(tile, (this.mousePos.x/this.scale-tile.height/2)|0, (this.mousePos.y/this.scale-tile.width/1.7)|0);
+        this.context.restore();
+    }
 }
 
 Game.prototype.playSound = function(type) {
@@ -369,18 +385,11 @@ Game.prototype.hookEvents = function(canvas, autoresize) {
 
     canvas.onmousedown = (function(e) {
         this.dragging = getMousePosition(e).x < this.width/2 ? 1 : 2;
-        this.render();
         canvas.onmousemove = (function(e) {
-            this.render();
-            var pos = getMousePosition(e);
-            this.context.save();
-            //this.context.translate(this.width/2, this.height/2-tileHeight/2)
-            this.context.scale(this.scale, this.scale);
-            var tile = this.tiles['owner_' + this.dragging + '_0']
-            this.context.drawImage(tile, pos.x/this.scale-tile.height/2, pos.y/this.scale-tile.width/1.7);
-            this.context.restore();
+            this.mousePos = getMousePosition(e);
         }).bind(this);
         canvas.onmousemove(e);
+        this.render();
     }).bind(this);
 
     canvas.onmouseup = (function(e) {
@@ -394,6 +403,7 @@ Game.prototype.hookEvents = function(canvas, autoresize) {
             this.playSound('kill');
         } else {
             this.playSound('owner_' + this.player);
+            var x = this.board.screenPosition()
             this.particles.push(new Particle(this.tiles.smoke, 0.5, {x: 100, y: 100, scale: 0.1, alpha: 1}, {x: 200, y: 200, scale: 0.15, alpha: 0}));
         }
         this.update();
@@ -415,7 +425,7 @@ Game.prototype.hookEvents = function(canvas, autoresize) {
 
     function step() {
         window.requestAnimationFrame(step.bind(this));
-        if (this.particles.length > 0 && this.loaded) {
+        if ((this.dragging || this.particles.length > 0) && this.loaded) {
             this.render();
         }
     }
