@@ -148,10 +148,11 @@ Board.prototype.render = function(width, height, tiles) {
     this.buffer.restore();
 }
 
-function Game(side, canvas) {
-    this.canvas = canvas;
-    this.context = canvas.getContext('2d');
-    this.board = new Board(side, canvas.width, canvas.height);
+function Game(side, context, width, height) {
+    this.width = width;
+    this.height = height;
+    this.context = context;
+    this.board = new Board(side, this.width, this.height);
     this.player = 1;
     this.loadTiles(this.update.bind(this));
 }
@@ -177,17 +178,20 @@ Game.prototype.loadTiles = function(callback) {
 }
 
 Game.prototype.update = function() {
-    this.board.render(this.canvas.width, this.canvas.height, this.tiles);
+    this.board.render(this.width, this.height, this.tiles);
     this.render();
 }
 
 Game.prototype.render = function() {
-    var image = this.board.buffer.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    var image = this.board.buffer.getImageData(0, 0, this.width, this.height);
     this.context.putImageData(image, 0, 0);
+
+    this.context.drawImage(this.tiles[1], this.width-100, this.height-100);
+    this.context.drawImage(this.tiles[1], this.width-100, this.height-100);
 }
 
 Game.prototype.playEvent = function(e) {
-    var canvasBounds = canvas.getBoundingClientRect();
+    var canvasBounds = e.target.getBoundingClientRect();
     var screenX = (e.clientX - canvasBounds.left - canvasBounds.width/2) / scale / tileWidth;
     var screenY = (e.clientY - canvasBounds.top - canvasBounds.height/2) / scale / (tileHeight/2);
     var mapX = Math.round(screenX - screenY/2 + this.board.side/2 - 0.5);
@@ -196,13 +200,16 @@ Game.prototype.playEvent = function(e) {
     if (ok) {
         this.player = this.player === 1 ? 2 : 1;
         this.update();
-    }    
+    }
+}
+
+Game.prototype.hookEvents = function(canvas) {
+    canvas.onclick = game.playEvent.bind(game);
 }
 
 var canvas = document.getElementsByTagName('canvas')[0];
-var game = new Game(19, canvas);
-canvas.onclick = game.playEvent.bind(game);
-
+var game = new Game(19, canvas.getContext('2d'), canvas.width, canvas.height);
+game.hookEvents(canvas);
 
 </script>
 </body>
