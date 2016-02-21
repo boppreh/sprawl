@@ -19,6 +19,7 @@
 
 <body>
 <canvas width="1900" height="960"></canvas>
+<audio src="music.ogg" autoplay loop />
 
 <script>
 "use strict";
@@ -120,23 +121,25 @@ Board.prototype.get = function(x, y, defaultValue) {
 Board.prototype.playAt = function(player, x, y) {
     var cell = this.get(x, y, new Cell(-1));
     if (cell.owner !== 0) {
-        return false;
+        return -1;
     }
 
     cell.owner = player;
 
     var self = this;
+    var killed = 0;
     cell.neighbors.forEach(function(c) {
         if (c.liberties() === 0) {
             c.kill();
+            killed++;
         }
     });
 
     if (cell.liberties() > 0) {
-        return true;
+        return killed;
     } else {
         cell.owner = 0;
-        return false;
+        return -1;
     }
 };
 
@@ -227,6 +230,7 @@ function Game(side, context, width, height) {
     this.player = 1;
     this.updateScale();
     this.loadTiles(this.update.bind(this));
+    this.loadSounds();
     this.dragging = 0;
 }
 
@@ -258,6 +262,18 @@ Game.prototype.loadTiles = function(callback) {
     }
 }
 
+Game.prototype.loadSounds = function() {
+    var soundTypes = ['owner_1', 'owner_2', 'kill'];
+
+    this.sounds = {};
+    for (var i = 0; i < soundTypes.length; i++) {
+        var type = soundTypes[i];
+        var sound = new Audio();
+        sound.src = type + '.ogg';
+        this.sounds[type] = sound;
+    }
+}
+
 Game.prototype.update = function() {
     this.board.render(this.width, this.height, this.scale, this.tiles);
     this.render();
@@ -279,6 +295,13 @@ Game.prototype.render = function() {
     }
 }
 
+Game.prototype.playSound = function(type) {
+    var sound = this.sounds[type];
+    sound.pause();
+    sound.currentTime = 0;
+    sound.play();
+}
+
 Game.prototype.playEvent = function(e) {
     var pos = getMousePosition(e);
     var tempX = (pos.x - this.width/2) / this.scale / tileWidth - 0.5;
@@ -286,7 +309,12 @@ Game.prototype.playEvent = function(e) {
     var mapX = Math.round(tempX - tempY + this.board.side/2);
     var mapY = Math.round(tempX + tempY + this.board.side/2);
     var ok = this.board.playAt(this.player, mapX, mapY);
-    if (ok) {
+    if (ok >= 0) {
+        if (ok > 0) {
+            this.playSound('kill');
+        } else {
+            this.playSound('owner_' + this.player);
+        }
         this.player = this.player === 1 ? 2 : 1;
     }
 }
