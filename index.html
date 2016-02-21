@@ -53,6 +53,8 @@ Cell.prototype.flood = function(callback, visited) {
             cell.flood(callback, visited);
         }
     }
+
+    this.detail = (Math.random() * 10)|0;
 }
 
 Cell.prototype.liberties = function() {
@@ -152,15 +154,17 @@ Board.prototype.render = function(width, height, scale, tiles) {
     for (var y = 0; y < this.side; y++) {
         for (var x = this.side - 1; x >= 0; x--) {
             var owner = this.map[y][x].owner;
-            var ground = tiles[0];
+            var ground = tiles.ground;
 
             var screenX = (y+x-this.side)*tileWidth/2;
             var screenY = (y-x)*tileHeight/2;
             this.buffer.drawImage(ground, screenX, screenY);
 
             if (owner > 0) {
-                var tile = tiles[owner];
+                var tile = tiles['owner_' + owner];
                 this.buffer.drawImage(tile, screenX + ground.width/2 - tile.width/2, screenY - tileHeight / 2);
+            } else {
+
             }
         }
     }
@@ -185,9 +189,10 @@ Game.prototype.updateScale = function() {
 }
 
 Game.prototype.loadTiles = function(callback) {
+    var tileTypes = ['ground', 'owner_1', 'owner_2'];
     this.tiles = {};
 
-    var remaining = 3
+    var remaining = tileTypes.length;
     for (var i = 0; i < remaining; i++) {
         var tile = new Image();
         tile.onload = function() {
@@ -199,8 +204,9 @@ Game.prototype.loadTiles = function(callback) {
         tile.onerror = function(e) {
             console.log(e);
         }
-        tile.src = 'owner_' + i + '.png';
-        this.tiles[i] = tile;
+        var type = tileTypes[i]
+        tile.src = type + '.png';
+        this.tiles[type] = tile;
     }
 }
 
@@ -216,10 +222,12 @@ Game.prototype.render = function() {
     this.context.putImageData(image, 0, 0);
 
     if (this.dragging != 1) {
-        this.context.drawImage(this.tiles[1], 200-this.tiles[1].width/2, this.height-200);
+        var tile = this.tiles.owner_1;
+        this.context.drawImage(tile, 200-tile.width/2, this.height-200);
     }
     if (this.dragging != 2) {
-        this.context.drawImage(this.tiles[2], this.width-200-this.tiles[2].width/2, this.height-200);
+        var tile = this.tiles.owner_2;
+        this.context.drawImage(tile, this.width-200-tile.width/2, this.height-200);
     }
 }
 
@@ -247,7 +255,7 @@ Game.prototype.hookEvents = function(canvas, autoresize) {
             this.context.save();
             //this.context.translate(this.width/2, this.height/2-tileHeight/2)
             this.context.scale(this.scale, this.scale);
-            var tile = this.tiles[this.dragging]
+            var tile = this.tiles['owner_' + this.dragging]
             this.context.drawImage(tile, pos.x/this.scale-tile.height/2, pos.y/this.scale-tile.width/1.7);
             this.context.restore();
         }).bind(this);
