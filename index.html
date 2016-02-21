@@ -16,6 +16,13 @@ var scale = 0.7;
 var tileWidth = 130;
 var tileHeight = 66;
 
+function getMousePosition(e) {
+    var canvasBounds = e.target.getBoundingClientRect();
+    var screenX = e.clientX - canvasBounds.left;
+    var screenY = e.clientY - canvasBounds.top;
+    return {x: screenX, y: screenY};
+}
+
 function Cell(owner) {
     this.owner = owner;
     this.neighbors = [];
@@ -123,8 +130,9 @@ Board.prototype.playAt = function(player, x, y) {
 };
 
 Board.prototype.render = function(width, height, tiles) {
-    this.buffer.clearRect(0, 0, canvas.width, canvas.height);
     this.buffer.save();
+    this.buffer.fillStyle = '#FFF';
+    this.buffer.fillRect(0, 0, canvas.width, canvas.height);
 
     this.buffer.translate(canvas.width/2, canvas.height/2-tileHeight/2);
     this.buffer.scale(scale, scale);
@@ -155,6 +163,7 @@ function Game(side, context, width, height) {
     this.board = new Board(side, this.width, this.height);
     this.player = 1;
     this.loadTiles(this.update.bind(this));
+    this.dragging = 0;
 }
 
 Game.prototype.loadTiles = function(callback) {
@@ -186,25 +195,51 @@ Game.prototype.render = function() {
     var image = this.board.buffer.getImageData(0, 0, this.width, this.height);
     this.context.putImageData(image, 0, 0);
 
-    this.context.drawImage(this.tiles[1], this.width-100, this.height-100);
-    this.context.drawImage(this.tiles[1], this.width-100, this.height-100);
+    if (this.dragging != 1) {
+        this.context.drawImage(this.tiles[1], 100, this.height-200);
+    }
+    if (this.dragging != 2) {
+        this.context.drawImage(this.tiles[2], this.width-100, this.height-200);
+    }
 }
 
 Game.prototype.playEvent = function(e) {
-    var canvasBounds = e.target.getBoundingClientRect();
-    var screenX = (e.clientX - canvasBounds.left - canvasBounds.width/2) / scale / tileWidth;
-    var screenY = (e.clientY - canvasBounds.top - canvasBounds.height/2) / scale / (tileHeight/2);
+    var pos = getMousePosition(e);
+    var screenX = (pos.x - this.width/2) / scale / tileWidth;
+    var screenY = (pos.y - this.height/2) / scale / (tileHeight/2);
     var mapX = Math.round(screenX - screenY/2 + this.board.side/2 - 0.5);
     var mapY = Math.round(screenX + screenY/2 + this.board.side/2);
     var ok = this.board.playAt(this.player, mapX, mapY);
     if (ok) {
         this.player = this.player === 1 ? 2 : 1;
-        this.update();
     }
 }
 
 Game.prototype.hookEvents = function(canvas) {
-    canvas.onclick = game.playEvent.bind(game);
+    //canvas.onclick = game.playEvent.bind(game);
+
+    canvas.onmousedown = (function(e) {
+        this.dragging = getMousePosition(e).x < this.width/2 ? 1 : 2;
+        this.render();
+        canvas.onmousemove = (function(e) {
+            this.render();
+            var pos = getMousePosition(e);
+            this.context.save();
+            //this.context.translate(this.width/2, this.height/2-tileHeight/2)
+            this.context.scale(scale, scale);
+            var tile = this.tiles[this.dragging]
+            this.context.drawImage(tile, pos.x/scale-tile.height/2, pos.y/scale-tile.width/1.7);
+            this.context.restore();
+        }).bind(this);;
+    }).bind(this);
+
+    canvas.onmouseup = (function(e) {
+        this.player = this.dragging;
+        this.dragging = 0;
+        canvas.onmousemove = undefined;
+        game.playEvent(e);
+        this.update();
+    }).bind(this)
 }
 
 var canvas = document.getElementsByTagName('canvas')[0];
