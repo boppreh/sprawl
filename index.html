@@ -227,12 +227,16 @@ function Particle(image, duration, start, end) {
     this.duration = duration;
     this.start = start;
     this.end = end;
-    this.start = new Date().getTime() / 1000;
+    this.starTime = new Date().getTime() / 1000;
 }
 
 Particle.prototype.update = function(context) {
     var current = new Date().getTime() / 1000;
-    var t = Math.min(1, (current - this.start) / this.duration);
+    var t = (current - this.starTime) / this.duration;
+    if (t >= 1) {
+        return true;
+    }
+
     var props = {};
     for (var prop in this.start) {
         props[prop] = this.start[prop]+ (this.end[prop] - this.start[prop]) * t;
@@ -240,9 +244,10 @@ Particle.prototype.update = function(context) {
     context.save();
     context.translate(props.x, props.y);
     context.scale(props.scale || 1, props.scale || 1);
+    context.globalAlpha = props.alpha || 1;
     context.drawImage(this.image, -this.image.width/2, -this.image.height/2);
     context.restore();
-    return t === 1;
+    return false;
 }
 
 function Game(side, context, width, height) {
@@ -252,6 +257,7 @@ function Game(side, context, width, height) {
     this.board = new Board(side, this.width, this.height);
     this.player = 1;
     this.updateScale();
+    this.loaded = false;
     this.loadTiles(this.update.bind(this));
     this.loadSounds();
     this.dragging = 0;
@@ -269,21 +275,33 @@ Game.prototype.loadTiles = function(callback) {
     this.tiles = {};
 
     var remaining = tileTypes.length;
-    for (var i = 0; i < remaining; i++) {
+
+    var prepareTile = function(type) {
+        var type = tileTypes[i]
         var tile = new Image();
-        tile.onload = function() {
+        tile.onload = (function() {
+            var buffer = document.createElement('canvas');
+            buffer.width = tile.width;
+            buffer.height = tile.height;
+            var context = buffer.getContext('2d')
+            context.drawImage(tile, 0, 0);
+            this.tiles[type] = buffer;
             remaining--;
             if (remaining === 0) {
+                this.loaded = true;
                 callback();
             }
-        };
+        }).bind(this);
         tile.onerror = function(e) {
             console.log(e);
         }
-        var type = tileTypes[i]
         tile.src = type + '.png';
-        this.tiles[type] = tile;
+    }.bind(this);
+
+    for (var i = 0; i < remaining; i++) {
+        prepareTile(tileTypes[i]);
     }
+
 }
 
 Game.prototype.loadSounds = function() {
@@ -376,7 +394,7 @@ Game.prototype.hookEvents = function(canvas, autoresize) {
             this.playSound('kill');
         } else {
             this.playSound('owner_' + this.player);
-            this.particles.push(new Particle(this.tiles.smoke, 0.5, {x: 100, y: 100, scale: 0.1}, {x: 200, y: 200, scale: 0.15}));
+            this.particles.push(new Particle(this.tiles.smoke, 0.5, {x: 100, y: 100, scale: 0.1, alpha: 1}, {x: 200, y: 200, scale: 0.15, alpha: 0}));
         }
         this.update();
     }).bind(this);
@@ -388,10 +406,20 @@ Game.prototype.hookEvents = function(canvas, autoresize) {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             this.updateScale();
-            this.update();
+            if (this.loaded) {
+                this.board.render(this.width, this.height, this.scale, this.tiles);
+            }
         }).bind(this);
         window.onresize();
     }
+
+    function step() {
+        window.requestAnimationFrame(step.bind(this));
+        if (this.particles.length > 0 && this.loaded) {
+            this.render();
+        }
+    }
+    step.bind(this)();
 }
 
 var canvas = document.getElementsByTagName('canvas')[0];
