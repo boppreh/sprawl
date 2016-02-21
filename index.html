@@ -69,11 +69,12 @@ Cell.prototype.liberties = function() {
     return count;
 }
 
-Cell.prototype.kill = function() {
+Cell.prototype.kill = function(callback) {
     var owner = this.owner;
     this.flood(function(c) {
         if (c.owner === owner) {
             c.owner = 0;
+            callback && callback(c);
             return true;
         }
     });
@@ -121,17 +122,16 @@ Board.prototype.get = function(x, y, defaultValue) {
 Board.prototype.playAt = function(player, x, y) {
     var cell = this.get(x, y, new Cell(-1));
     if (cell.owner !== 0) {
-        return -1;
+        return null;
     }
 
     cell.owner = player;
 
     var self = this;
-    var killed = 0;
+    var killed = [];
     cell.neighbors.forEach(function(c) {
         if (c.liberties() === 0) {
-            c.kill();
-            killed++;
+            c.kill(killed.push);
         }
     });
 
@@ -139,7 +139,7 @@ Board.prototype.playAt = function(player, x, y) {
         return killed;
     } else {
         cell.owner = 0;
-        return -1;
+        return null;
     }
 };
 
@@ -222,6 +222,29 @@ Board.prototype.render = function(width, height, scale, tiles) {
     this.buffer.restore();
 }
 
+function Particle(image, duration, start, end) {
+    this.image = image;
+    this.duration = duration;
+    this.start = start;
+    this.end = end;
+    this.start = new Date().getTime() / 1000;
+}
+
+Particle.prototype.update = function(context) {
+    var current = new Date().getTime() / 1000;
+    var t = Math.min(1, (current - this.start) / this.duration);
+    var props = {};
+    for (var prop in this.start) {
+        props[prop] = this.start[prop]+ (this.end[prop] - this.start[prop]) * t;
+    }
+    context.save();
+    context.translate(props.x, props.y);
+    context.scale(props.scale || 1, props.scale || 1);
+    context.drawImage(this.image, -this.image.width/2, -this.image.height/2);
+    context.restore();
+    return t === 1;
+}
+
 function Game(side, context, width, height) {
     this.width = width;
     this.height = height;
@@ -232,6 +255,7 @@ function Game(side, context, width, height) {
     this.loadTiles(this.update.bind(this));
     this.loadSounds();
     this.dragging = 0;
+    this.particles = [];
 }
 
 Game.prototype.updateScale = function() {
@@ -240,7 +264,7 @@ Game.prototype.updateScale = function() {
 }
 
 Game.prototype.loadTiles = function(callback) {
-    var tileTypes = ['ground_0', 'ground_1', 'ground_2', 'ground_3', 'ground_4', 'owner_1_0', 'owner_1_1', 'owner_1_2', 'owner_2_0', 'owner_2_1', 'owner_2_2', 'ews', 'nws', 'nes', 'new', 'ew', 'ws', 'ns', 'es', 'nw', 'ne', 'n', 'e', 'w', 's', 'alone', 'news'];
+    var tileTypes = ['ground_0', 'ground_1', 'ground_2', 'ground_3', 'ground_4', 'owner_1_0', 'owner_1_1', 'owner_1_2', 'owner_2_0', 'owner_2_1', 'owner_2_2', 'ews', 'nws', 'nes', 'new', 'ew', 'ws', 'ns', 'es', 'nw', 'ne', 'n', 'e', 'w', 's', 'alone', 'news', 'smoke'];
 
     this.tiles = {};
 
@@ -293,6 +317,13 @@ Game.prototype.render = function() {
         var tile = this.tiles.owner_2_0;
         this.context.drawImage(tile, this.width-200-tile.width/2, this.height-200);
     }
+
+    for (var i = this.particles.length - 1; i >= 0; i--) {
+        var finished = this.particles[i].update(this.context);
+        if (finished) {
+            this.particles.splice(i, 1);
+        }
+    }
 }
 
 Game.prototype.playSound = function(type) {
@@ -308,15 +339,11 @@ Game.prototype.playEvent = function(e) {
     var tempY = (pos.y - this.height/2) / this.scale / tileHeight + 0.5;
     var mapX = Math.round(tempX - tempY + this.board.side/2);
     var mapY = Math.round(tempX + tempY + this.board.side/2);
-    var ok = this.board.playAt(this.player, mapX, mapY);
-    if (ok >= 0) {
-        if (ok > 0) {
-            this.playSound('kill');
-        } else {
-            this.playSound('owner_' + this.player);
-        }
+    var killed = this.board.playAt(this.player, mapX, mapY);
+    if (killed !== null) {
         this.player = this.player === 1 ? 2 : 1;
     }
+    return killed;
 }
 
 Game.prototype.hookEvents = function(canvas, autoresize) {
@@ -342,7 +369,15 @@ Game.prototype.hookEvents = function(canvas, autoresize) {
         this.player = this.dragging;
         this.dragging = 0;
         canvas.onmousemove = undefined;
-        game.playEvent(e);
+        var killed = game.playEvent(e);
+        if (killed === null) {
+
+        } else if (killed.length > 0) {
+            this.playSound('kill');
+        } else {
+            this.playSound('owner_' + this.player);
+            this.particles.push(new Particle(this.tiles.smoke, 0.5, {x: 100, y: 100, scale: 0.1}, {x: 200, y: 200, scale: 0.15}));
+        }
         this.update();
     }).bind(this);
 
