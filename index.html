@@ -157,6 +157,7 @@ Board.prototype.render = function(width, height, scale, tiles) {
             var screenX = (y+x-this.side)*tileWidth/2;
             var screenY = (y-x+1)*tileHeight/2;
 
+            var tile;
             if (cell.owner === 0) {
                 switch (cell.detail) {
                     case 0:
@@ -165,19 +166,19 @@ Board.prototype.render = function(width, height, scale, tiles) {
                     case 3:
                     case 4:
                     case 5:
-                        tile = tiles.ground;
+                        tile = tiles.ground_0;
                         break
                     case 6:
-                        tile = tiles.trees_5;
+                        tile = tiles.ground_1;
                         break;
                     case 7:
-                        tile = tiles.trees_6;
+                        tile = tiles.ground_2;
                         break;
                     case 8:
-                        tile = tiles.trees_8;
+                        tile = tiles.ground_3;
                         break;
                     case 9:
-                        tile = tiles.trees_9;
+                        tile = tiles.ground_4;
                         break;
                 }
                 this.buffer.drawImage(tile, screenX, screenY-tile.height);
@@ -189,10 +190,28 @@ Board.prototype.render = function(width, height, scale, tiles) {
                 if (this.get(x-1, y, c).owner === cell.owner) neighbors += 'w';
                 if (this.get(x, y+1, c).owner === cell.owner) neighbors += 's';
 
+                switch (cell.detail) {
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                        tile = tiles['owner_' + cell.owner + '_0'];
+                        break
+                    case 4:
+                    case 5:
+                    case 6:
+                        tile = tiles['owner_' + cell.owner + '_1'];
+                        break;
+                    case 7:
+                    case 8:
+                    case 9:
+                        tile = tiles['owner_' + cell.owner + '_2'];
+                        break;
+                }
+
                 var groundTile = neighbors.length === 0 ? tiles.alone : tiles[neighbors];
-                this.buffer.drawImage(groundTile, screenX, screenY-tiles.ground.height);
-                var tile = tiles['owner_' + cell.owner];
-                this.buffer.drawImage(tile, screenX + tiles.ground.width/2 - tile.width/2, screenY-tile.height*1.5);
+                this.buffer.drawImage(groundTile, screenX, screenY-tiles.ground_0.height);
+                this.buffer.drawImage(tile, screenX + tiles.ground_0.width/2 - tile.width/2, screenY-tile.height*1.5);
             }
         }
     }
@@ -217,7 +236,7 @@ Game.prototype.updateScale = function() {
 }
 
 Game.prototype.loadTiles = function(callback) {
-    var tileTypes = ['ground', 'owner_1', 'owner_2', 'trees_1', 'trees_2', 'trees_3', 'trees_4', 'trees_5', 'trees_6', 'trees_7', 'trees_8', 'trees_9', 'ews', 'nws', 'nes', 'new', 'ew', 'ws', 'ns', 'es', 'nw', 'ne', 'n', 'e', 'w', 's', 'alone', 'news'];
+    var tileTypes = ['ground_0', 'ground_1', 'ground_2', 'ground_3', 'ground_4', 'owner_1_0', 'owner_1_1', 'owner_1_2', 'owner_2_0', 'owner_2_1', 'owner_2_2', 'ews', 'nws', 'nes', 'new', 'ew', 'ws', 'ns', 'es', 'nw', 'ne', 'n', 'e', 'w', 's', 'alone', 'news'];
 
     this.tiles = {};
 
@@ -251,11 +270,11 @@ Game.prototype.render = function() {
     this.context.putImageData(image, 0, 0);
 
     if (this.dragging != 1) {
-        var tile = this.tiles.owner_1;
+        var tile = this.tiles.owner_1_0;
         this.context.drawImage(tile, 200-tile.width/2, this.height-200);
     }
     if (this.dragging != 2) {
-        var tile = this.tiles.owner_2;
+        var tile = this.tiles.owner_2_0;
         this.context.drawImage(tile, this.width-200-tile.width/2, this.height-200);
     }
 }
@@ -284,7 +303,7 @@ Game.prototype.hookEvents = function(canvas, autoresize) {
             this.context.save();
             //this.context.translate(this.width/2, this.height/2-tileHeight/2)
             this.context.scale(this.scale, this.scale);
-            var tile = this.tiles['owner_' + this.dragging]
+            var tile = this.tiles['owner_' + this.dragging + '_0']
             this.context.drawImage(tile, pos.x/this.scale-tile.height/2, pos.y/this.scale-tile.width/1.7);
             this.context.restore();
         }).bind(this);
