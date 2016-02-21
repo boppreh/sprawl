@@ -13,7 +13,6 @@
 
 var scale = 0.7;
 
-var tiles = {};
 var tileWidth = 130;
 var tileHeight = 66;
 
@@ -123,19 +122,19 @@ Board.prototype.playAt = function(player, x, y) {
     }
 };
 
-Board.prototype.render = function(width, height) {
+Board.prototype.render = function(width, height, tiles) {
     this.buffer.clearRect(0, 0, canvas.width, canvas.height);
     this.buffer.save();
 
     this.buffer.translate(canvas.width/2, canvas.height/2-tileHeight/2);
     this.buffer.scale(scale, scale);
 
-    for (var y = 0; y < board.side; y++) {
-        for (var x = board.side - 1; x >= 0; x--) {
-            var owner = board.map[y][x].owner;
+    for (var y = 0; y < this.side; y++) {
+        for (var x = this.side - 1; x >= 0; x--) {
+            var owner = this.map[y][x].owner;
             var ground = tiles[0];
             //buffer.fillRect(x*tile.width, y*tile.height, 10, 10);
-            var screenX = (y+x-board.side)*tileWidth/2;
+            var screenX = (y+x-this.side)*tileWidth/2;
             var screenY = (y-x)*tileHeight/2;
             this.buffer.drawImage(ground, screenX, screenY);
 
@@ -149,46 +148,62 @@ Board.prototype.render = function(width, height) {
     this.buffer.restore();
 }
 
-var canvas = document.getElementsByTagName('canvas')[0];
-var context = canvas.getContext('2d');
-var board = new Board(19, canvas.width, canvas.height);
-
-function render() {
-    var image = board.buffer.getImageData(0, 0, canvas.width, canvas.height);
-    context.putImageData(image, 0, 0);
+function Game(side, canvas) {
+    this.canvas = canvas;
+    this.context = canvas.getContext('2d');
+    this.board = new Board(side, canvas.width, canvas.height);
+    this.player = 1;
+    this.loadTiles(this.update.bind(this));
 }
 
-var player = 1;
-canvas.onclick = function(e) {
+Game.prototype.loadTiles = function(callback) {
+    this.tiles = {};
+
+    var remaining = 3
+    for (var i = 0; i < remaining; i++) {
+        var tile = new Image();
+        tile.onload = function() {
+            remaining--;
+            if (remaining === 0) {
+                callback();
+            }
+        };
+        tile.onerror = function(e) {
+            console.log(e);
+        }
+        tile.src = 'owner_' + i + '.png';
+        this.tiles[i] = tile;
+    }
+}
+
+Game.prototype.update = function() {
+    this.board.render(this.canvas.width, this.canvas.height, this.tiles);
+    this.render();
+}
+
+Game.prototype.render = function() {
+    var image = this.board.buffer.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    this.context.putImageData(image, 0, 0);
+}
+
+Game.prototype.playEvent = function(e) {
     var canvasBounds = canvas.getBoundingClientRect();
     var screenX = (e.clientX - canvasBounds.left - canvasBounds.width/2) / scale / tileWidth;
     var screenY = (e.clientY - canvasBounds.top - canvasBounds.height/2) / scale / (tileHeight/2);
-    var mapX = Math.round(screenX - screenY/2 + board.side/2 - 0.5);
-    var mapY = Math.round(screenX + screenY/2 + board.side/2);
-    var ok = board.playAt(player, mapX, mapY);
+    var mapX = Math.round(screenX - screenY/2 + this.board.side/2 - 0.5);
+    var mapY = Math.round(screenX + screenY/2 + this.board.side/2);
+    var ok = this.board.playAt(this.player, mapX, mapY);
     if (ok) {
-        player = player === 1 ? 2 : 1;
-        board.render(canvas.width, canvas.height);
-        render();
-    }
+        this.player = this.player === 1 ? 2 : 1;
+        this.update();
+    }    
 }
 
-var remaining = 3
-for (var i = 0; i < remaining; i++) {
-    var tile = new Image();
-    tile.onload = function() {
-        remaining--;
-        if (remaining === 0) {
-            board.render();
-            render();
-        }
-    };
-    tile.onerror = function(e) {
-        console.log(e);
-    }
-    tile.src = 'owner_' + i + '.png';
-    tiles[i] = tile;
-}
+var canvas = document.getElementsByTagName('canvas')[0];
+var game = new Game(19, canvas);
+canvas.onclick = game.playEvent.bind(game);
+
+
 </script>
 </body>
 </html>
